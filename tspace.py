@@ -36,6 +36,7 @@ class TSpace(object):
         tid = self._find_free_space()
         self._add_tuple(tid, obj)
         self._update_index(tid, obj)
+        self._count += 1
         return tid
 
     def get(self, tid):
@@ -73,6 +74,17 @@ class TSpaceTests(unittest.TestCase):
         self.assertIsInstance(tid2, int)
         self.assertNotEqual(tid2, -1)
         self.assertNotEqual(tid1, tid2)
+
+    def test_put_chunk(self):
+        tids = []
+        for x in xrange(DEFAULT_NUM_TUPLES + 1):
+            tids.append(self.tspace.put({'a': x}))
+
+        print self.tspace._chunks
+
+        for tid,x in zip(tids, xrange(DEFAULT_NUM_TUPLES + 1)):
+            self.assertEqual(self.tspace.get(tid)['a'], x,
+                    'value incorrect for tid: %s' % tid)
 
     def test_get(self):
         tid = self.tspace.put(self.v)
