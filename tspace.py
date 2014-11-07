@@ -80,8 +80,6 @@ class TSpaceTests(unittest.TestCase):
         for x in xrange(DEFAULT_NUM_TUPLES + 1):
             tids.append(self.tspace.put({'a': x}))
 
-        print self.tspace._chunks
-
         for tid,x in zip(tids, xrange(DEFAULT_NUM_TUPLES + 1)):
             self.assertEqual(self.tspace.get(tid)['a'], x,
                     'value incorrect for tid: %s' % tid)
