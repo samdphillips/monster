@@ -147,5 +147,18 @@ class TSpaceTests(unittest.TestCase):
         v = self.tspace.get(tid, None)
         self.assertEqual(v, None)
 
+    def test_get_missing_outside_chunk(self):
+        self.tspace._allocate_tuples()
+        tid = self.tspace._make_tid(DEFAULT_NUM_TUPLES + 1)
+        with self.assertRaises(NoSuchTuple):
+            self.tspace.get(tid)
+
+    def test_get_missing_inside_chunk(self):
+        self.tspace._allocate_tuples()
+        tid = self.tspace._make_tid(1)
+        with self.assertRaises(NoSuchTuple):
+            self.tspace.get(tid)
+
+
 if __name__ == '__main__':
     unittest.main()

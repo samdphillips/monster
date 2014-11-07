@@ -1,0 +1,9 @@
+
+- get tid out of chunks range (1 + current allocation)
+- get tid out of chunks range (1000 chunks beyond current chunk)
+- put tid out of chunks range
+- put in the middle of the free list
+- remove non-existant tuple in existant chunk
+- remove non-existant tuple in non-existant chunk
+
+
