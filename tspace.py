@@ -45,7 +45,10 @@ class TSpace(object):
         return self._chunks[c][o]
 
     def remove(self, tid):
-        pass
+        c = tid / DEFAULT_NUM_TUPLES
+        o = tid % DEFAULT_NUM_TUPLES
+        self._chunks[c][o] = self._free
+        self._free = tid
 
     def find(self, query):
         pass
@@ -87,6 +90,13 @@ class TSpaceTests(unittest.TestCase):
     def test_get(self):
         tid = self.tspace.put(self.v)
         self.assertEqual(self.tspace.get(tid), self.v)
+
+    def test_remove(self):
+        tid = self.tspace.put(self.v)
+        self.tspace.remove(tid)
+        # checks an implementation detail
+        self.assertEqual(self.tspace._free, tid)
+
 
 if __name__ == '__main__':
     unittest.main()
