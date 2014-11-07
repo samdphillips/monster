@@ -12,6 +12,10 @@ class NoSuchTuple(Exception):
     pass
 
 
+class BadPut(Exception):
+    pass
+
+
 _default = object()
 
 class TSpace(object):
@@ -41,6 +45,8 @@ class TSpace(object):
 
     def _add_tuple(self, tid, obj):
         c = self._chunks[tid.chunk]
+        if c[tid.offset] != self._free:
+            raise BadPut
         c[tid.offset] = obj
 
     def _update_index(self, tid, o):
@@ -158,6 +164,17 @@ class TSpaceTests(unittest.TestCase):
         tid = self.tspace._make_tid(1)
         with self.assertRaises(NoSuchTuple):
             self.tspace.get(tid)
+
+    def test_put_out_of_range(self):
+        tid = self.tspace._make_tid(0)
+        with self.assertRaises(IndexError):
+            self.tspace._add_tuple(tid, self.v)
+
+    def test_put_free_interior(self):
+        self.tspace._allocate_tuples()
+        tid = self.tspace._make_tid(1)
+        with self.assertRaises(BadPut):
+            self.tspace._add_tuple(tid, self.v)
 
 
 if __name__ == '__main__':
