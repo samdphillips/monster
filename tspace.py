@@ -8,11 +8,11 @@ class TSpace(object):
     def __init__(self):
         self._indexes = []
         self._chunks  = []
-        self._count   =  0
-        self._free    = -1
+        self._count   = 0
+        self._free    = None
 
     def _find_free_space(self):
-        if self._free == -1:
+        if self._free is None:
             self._allocate_tuples()
         tid = self._free
         self._free = self._get(tid)
@@ -20,7 +20,7 @@ class TSpace(object):
 
     def _allocate_tuples(self):
         new = [self._count + x + 1 for x in xrange(DEFAULT_NUM_TUPLES)]
-        new[-1] = -1
+        new[-1] = None
         self._free = self._count
         self._chunks.append(new)
 
@@ -78,13 +78,13 @@ class TSpaceTests(unittest.TestCase):
     def test_put(self):
         tid = self.tspace.put(self.v)
         self.assertIsInstance(tid, int)
-        self.assertNotEqual(tid, -1)
+        self.assertNotEqual(tid, None)
 
     def test_put2(self):
         tid1 = self.tspace.put(self.v)
         tid2 = self.tspace.put(self.v)
         self.assertIsInstance(tid2, int)
-        self.assertNotEqual(tid2, -1)
+        self.assertNotEqual(tid2, None)
         self.assertNotEqual(tid1, tid2)
 
     def test_put_chunk(self):
