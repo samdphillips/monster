@@ -10,16 +10,16 @@ class TSpace(object):
 
     def _find_free_space(self):
         if self._free == -1:
-            return None
-        return self._free
+            self._allocate_tuples()
+        tid = self._free
+        self._free = self.get(tid)
+        return tid
 
     def _allocate_tuples(self):
         new = [self._count + x + 1 for x in xrange(DEFAULT_NUM_TUPLES)]
         new[-1] = -1
-        self._free = self._count + 1
-        tid = self._count
+        self._free = self._count
         self._chunks.append(new)
-        return tid
 
     def _add_tuple(self, tid, obj):
         c = tid / DEFAULT_NUM_TUPLES
@@ -34,8 +34,6 @@ class TSpace(object):
 
     def put(self, obj):
         tid = self._find_free_space()
-        if tid is None:
-            tid = self._allocate_tuples()
         self._add_tuple(tid, obj)
         self._update_index(tid, obj)
         return tid
