@@ -81,7 +81,10 @@ class TSpace(object):
         return v
 
     def remove(self, tid):
-        v = self._get(tid)
+        try:
+            v = self._get(tid)
+        except NoSuchTuple:
+            return
         if isinstance(v, _tid):
             return
         self._add_tuple(tid, self._free, safely=False)
@@ -142,6 +145,12 @@ class TSpaceTests(unittest.TestCase):
 
     def test_remove_missing_allocated(self):
         self.tspace._allocate_tuples()
+        tid = self.tspace._make_tid(1)
+        free = self.tspace._free
+        self.tspace.remove(tid)
+        self.assertEqual(self.tspace._free, free)
+
+    def test_remove_missing_allocated(self):
         tid = self.tspace._make_tid(1)
         free = self.tspace._free
         self.tspace.remove(tid)
