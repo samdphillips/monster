@@ -43,9 +43,9 @@ class TSpace(object):
         self._free = self._make_tid(self._count)
         self._chunks.append(new)
 
-    def _add_tuple(self, tid, obj):
+    def _add_tuple(self, tid, obj, safely=True):
         c = self._chunks[tid.chunk]
-        if c[tid.offset] != self._free:
+        if safely and c[tid.offset] != self._free:
             raise BadPut
         c[tid.offset] = obj
 
@@ -81,8 +81,10 @@ class TSpace(object):
         return v
 
     def remove(self, tid):
-        c = self._chunks[tid.chunk]
-        c[tid.offset] = self._free
+        v = self._get(tid)
+        if isinstance(v, _tid):
+            return
+        self._add_tuple(tid, self._free, safely=False)
         self._free = tid
 
     def find(self, query):
@@ -137,6 +139,13 @@ class TSpaceTests(unittest.TestCase):
         self.tspace.remove(tid)
         with self.assertRaises(NoSuchTuple):
             self.tspace.get(tid)
+
+    def test_remove_missing_allocated(self):
+        self.tspace._allocate_tuples()
+        tid = self.tspace._make_tid(1)
+        free = self.tspace._free
+        self.tspace.remove(tid)
+        self.assertEqual(self.tspace._free, free)
 
     def test_get_missing(self):
         tid = self.tspace._make_tid(0)
