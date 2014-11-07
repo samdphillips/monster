@@ -14,7 +14,7 @@ class TSpace(object):
         return self._free
 
     def _allocate_tuples(self):
-        new = [self._count + x for x in xrange(DEFAULT_NUM_TUPLES)]
+        new = [self._count + x + 1 for x in xrange(DEFAULT_NUM_TUPLES)]
         new[-1] = -1
         self._free = self._count + 1
         tid = self._count
