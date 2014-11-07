@@ -1,6 +1,9 @@
 
 DEFAULT_NUM_TUPLES = 32
 
+class NoSuchTuple(Exception):
+    pass
+
 class TSpace(object):
     def __init__(self):
         self._indexes = []
@@ -12,7 +15,7 @@ class TSpace(object):
         if self._free == -1:
             self._allocate_tuples()
         tid = self._free
-        self._free = self.get(tid)
+        self._free = self._get(tid)
         return tid
 
     def _allocate_tuples(self):
@@ -39,10 +42,16 @@ class TSpace(object):
         self._count += 1
         return tid
 
-    def get(self, tid):
+    def _get(self, tid):
         c = tid / DEFAULT_NUM_TUPLES
         o = tid % DEFAULT_NUM_TUPLES
         return self._chunks[c][o]
+
+    def get(self, tid):
+        v = self._get(tid)
+        if isinstance(v, int):
+            raise NoSuchTuple
+        return v
 
     def remove(self, tid):
         c = tid / DEFAULT_NUM_TUPLES
@@ -94,8 +103,14 @@ class TSpaceTests(unittest.TestCase):
     def test_remove(self):
         tid = self.tspace.put(self.v)
         self.tspace.remove(tid)
-        # checks an implementation detail
+        # XXX: checks an implementation detail
         self.assertEqual(self.tspace._free, tid)
+
+    def test_remove_get(self):
+        tid = self.tspace.put(self.v)
+        self.tspace.remove(tid)
+        with self.assertRaises(NoSuchTuple):
+            self.tspace.get(tid)
 
 
 if __name__ == '__main__':
