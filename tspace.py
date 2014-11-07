@@ -12,6 +12,8 @@ class NoSuchTuple(Exception):
     pass
 
 
+_default = object()
+
 class TSpace(object):
     def __init__(self):
         self._indexes = []
@@ -55,13 +57,21 @@ class TSpace(object):
         return tid
 
     def _get(self, tid):
-        c = self._chunks[tid.chunk]
-        return c[tid.offset]
-
-    def get(self, tid):
-        v = self._get(tid)
-        if isinstance(v, _tid):
+        try:
+            c = self._chunks[tid.chunk]
+            return c[tid.offset]
+        except IndexError:
             raise NoSuchTuple
+
+    def get(self, tid, default=_default):
+        try:
+            v = self._get(tid)
+            if isinstance(v, _tid):
+                raise NoSuchTuple
+        except NoSuchTuple:
+            if default is not _default:
+                return default
+            raise
         return v
 
     def remove(self, tid):
@@ -122,6 +132,20 @@ class TSpaceTests(unittest.TestCase):
         with self.assertRaises(NoSuchTuple):
             self.tspace.get(tid)
 
+    def test_get_missing(self):
+        tid = self.tspace._make_tid(0)
+        with self.assertRaises(NoSuchTuple):
+            self.tspace.get(tid)
+
+    def test_get_default(self):
+        tid = self.tspace._make_tid(0)
+        v = self.tspace.get(tid, 42)
+        self.assertEqual(v, 42)
+
+    def test_get_default_none(self):
+        tid = self.tspace._make_tid(0)
+        v = self.tspace.get(tid, None)
+        self.assertEqual(v, None)
 
 if __name__ == '__main__':
     unittest.main()
