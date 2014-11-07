@@ -1,8 +1,16 @@
 
+from collections import namedtuple
+
+
 DEFAULT_NUM_TUPLES = 32
+
+
+_tid = namedtuple('_tid', 'addr chunk offset')
+
 
 class NoSuchTuple(Exception):
     pass
+
 
 class TSpace(object):
     def __init__(self):
@@ -10,6 +18,11 @@ class TSpace(object):
         self._chunks  = []
         self._count   = 0
         self._free    = None
+
+    def _make_tid(self, addr):
+        chunk  = addr / DEFAULT_NUM_TUPLES
+        offset = addr % DEFAULT_NUM_TUPLES
+        return _tid(addr, chunk, offset)
 
     def _find_free_space(self):
         if self._free is None:
@@ -19,15 +32,14 @@ class TSpace(object):
         return tid
 
     def _allocate_tuples(self):
-        new = [self._count + x + 1 for x in xrange(DEFAULT_NUM_TUPLES)]
+        new = [self._make_tid(self._count + x + 1) for x in xrange(DEFAULT_NUM_TUPLES)]
         new[-1] = None
-        self._free = self._count
+        self._free = self._make_tid(self._count)
         self._chunks.append(new)
 
     def _add_tuple(self, tid, obj):
-        c = tid / DEFAULT_NUM_TUPLES
-        o = tid % DEFAULT_NUM_TUPLES
-        self._chunks[c][o] = obj
+        c = self._chunks[tid.chunk]
+        c[tid.offset] = obj
 
     def _update_index(self, tid, o):
         pass
@@ -43,20 +55,18 @@ class TSpace(object):
         return tid
 
     def _get(self, tid):
-        c = tid / DEFAULT_NUM_TUPLES
-        o = tid % DEFAULT_NUM_TUPLES
-        return self._chunks[c][o]
+        c = self._chunks[tid.chunk]
+        return c[tid.offset]
 
     def get(self, tid):
         v = self._get(tid)
-        if isinstance(v, int):
+        if isinstance(v, _tid):
             raise NoSuchTuple
         return v
 
     def remove(self, tid):
-        c = tid / DEFAULT_NUM_TUPLES
-        o = tid % DEFAULT_NUM_TUPLES
-        self._chunks[c][o] = self._free
+        c = self._chunks[tid.chunk]
+        c[tid.offset] = self._free
         self._free = tid
 
     def find(self, query):
@@ -77,13 +87,13 @@ class TSpaceTests(unittest.TestCase):
 
     def test_put(self):
         tid = self.tspace.put(self.v)
-        self.assertIsInstance(tid, int)
+        self.assertIsInstance(tid, _tid)
         self.assertNotEqual(tid, None)
 
     def test_put2(self):
         tid1 = self.tspace.put(self.v)
         tid2 = self.tspace.put(self.v)
-        self.assertIsInstance(tid2, int)
+        self.assertIsInstance(tid2, _tid)
         self.assertNotEqual(tid2, None)
         self.assertNotEqual(tid1, tid2)
 
@@ -94,7 +104,7 @@ class TSpaceTests(unittest.TestCase):
 
         for tid,x in zip(tids, xrange(DEFAULT_NUM_TUPLES + 1)):
             self.assertEqual(self.tspace.get(tid)['a'], x,
-                    'value incorrect for tid: %s' % tid)
+                    'value incorrect for tid: %s' % `tid`)
 
     def test_get(self):
         tid = self.tspace.put(self.v)
