@@ -67,13 +67,13 @@ class TSpace(object):
             c = self._chunks[tid.chunk]
             return c[tid.offset]
         except IndexError:
-            raise NoSuchTuple
+            raise NoSuchTuple(tid)
 
     def get(self, tid, default=_default):
         try:
             v = self._get(tid)
             if isinstance(v, _tid):
-                raise NoSuchTuple
+                raise NoSuchTuple(tid)
         except NoSuchTuple:
             if default is not _default:
                 return default
@@ -85,10 +85,12 @@ class TSpace(object):
             v = self._get(tid)
         except NoSuchTuple:
             return
+
         if isinstance(v, _tid):
             return
         self._add_tuple(tid, self._free, safely=False)
         self._free = tid
+        self._count -= 1
 
     def find(self, query):
         pass
@@ -99,6 +101,7 @@ class TSpace(object):
     def unsubscribe(self, subid):
         pass
 
+import random
 import unittest
 
 class TSpaceTests(unittest.TestCase):
@@ -193,6 +196,31 @@ class TSpaceTests(unittest.TestCase):
         tid = self.tspace._make_tid(1)
         with self.assertRaises(BadPut):
             self.tspace._add_tuple(tid, self.v)
+
+    def test_stress_random(self):
+        r0 = random.Random(1277)
+        for x in xrange(100):
+            seed = r0.getrandbits(32)
+            self.rand_test(seed)
+
+    def rand_test(self, seed):
+        r = random.Random(seed)
+        tuples = []
+        for y in xrange(5000):
+            a = r.choice(['get', 'put', 'remove'])
+            if a == 'put':
+                v = {'a': r.random()}
+                tid = self.tspace.put(v)
+                tuples.append((tid, v))
+            elif len(tuples) != 0  and a == 'get':
+                tid, v = r.choice(tuples)
+                self.assertEqual(self.tspace.get(tid), v)
+            elif len(tuples) != 0 and a == 'remove':
+                i = r.randrange(0, len(tuples)) 
+                tid, v = tuples[i]
+                del tuples[i]
+                self.tspace.remove(tid)
+
 
 
 if __name__ == '__main__':
