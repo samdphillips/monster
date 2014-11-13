@@ -4,7 +4,7 @@ from itertools import chain, count, izip
 from operator import methodcaller
 
 
-DEFAULT_NUM_TUPLES = 32
+DEFAULT_CHUNK_SIZE = 32
 
 
 _tid = namedtuple('_tid', 'addr chunk offset')
@@ -28,8 +28,8 @@ class TSpace(object):
         self._free    = None
 
     def _make_tid(self, addr):
-        chunk  = addr / DEFAULT_NUM_TUPLES
-        offset = addr % DEFAULT_NUM_TUPLES
+        chunk  = addr / DEFAULT_CHUNK_SIZE
+        offset = addr % DEFAULT_CHUNK_SIZE
         return _tid(addr, chunk, offset)
 
     def _find_free_space(self):
@@ -40,7 +40,7 @@ class TSpace(object):
         return tid
 
     def _allocate_tuples(self):
-        new = [self._make_tid(self._count + x + 1) for x in xrange(DEFAULT_NUM_TUPLES)]
+        new = [self._make_tid(self._count + x + 1) for x in xrange(DEFAULT_CHUNK_SIZE)]
         new[-1] = None
         self._free = self._make_tid(self._count)
         self._chunks.append(new)
@@ -140,10 +140,10 @@ class TSpaceTests(unittest.TestCase):
 
     def test_put_chunk(self):
         tids = []
-        for x in xrange(DEFAULT_NUM_TUPLES + 1):
+        for x in xrange(DEFAULT_CHUNK_SIZE + 1):
             tids.append(self.tspace.put({'a': x}))
 
-        for tid,x in zip(tids, xrange(DEFAULT_NUM_TUPLES + 1)):
+        for tid,x in zip(tids, xrange(DEFAULT_CHUNK_SIZE + 1)):
             self.assertEqual(self.tspace.get(tid)['a'], x,
                     'value incorrect for tid: %s' % `tid`)
 
@@ -193,7 +193,7 @@ class TSpaceTests(unittest.TestCase):
 
     def test_get_missing_outside_chunk(self):
         self.tspace._allocate_tuples()
-        tid = self.tspace._make_tid(DEFAULT_NUM_TUPLES + 1)
+        tid = self.tspace._make_tid(DEFAULT_CHUNK_SIZE + 1)
         with self.assertRaises(NoSuchTuple):
             self.tspace.get(tid)
 
