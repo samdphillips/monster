@@ -1,5 +1,7 @@
 
 from collections import namedtuple
+from itertools import chain, count, izip
+from operator import methodcaller
 
 
 DEFAULT_NUM_TUPLES = 32
@@ -43,17 +45,25 @@ class TSpace(object):
         self._free = self._make_tid(self._count)
         self._chunks.append(new)
 
-    def _add_tuple(self, tid, obj, safely=True):
+    def _add_tuple(self, tid, obj, check=True):
         c = self._chunks[tid.chunk]
-        if safely and c[tid.offset] != self._free:
+        if check and c[tid.offset] != self._free:
             raise BadPut
         c[tid.offset] = obj
 
-    def _update_index(self, tid, o):
-        pass
+    def _update_index(self, tid, o, remove=False):
+        if remove:
+            f = methodcaller('remove_tuple', tid, o)
+        else:
+            f = methodcaller('add_tuple', tid, o)
+
+        for i in self._indexes:
+            f(i)
 
     def add_index(self, index):
-        pass
+        for tid, v in self.all_tuples():
+            index.add_tuple(tid, v)
+        self._indexes.append(index)
 
     def put(self, obj):
         tid = self._find_free_space()
@@ -82,15 +92,21 @@ class TSpace(object):
 
     def remove(self, tid):
         try:
-            v = self._get(tid)
+            obj = self._get(tid)
         except NoSuchTuple:
             return
 
-        if isinstance(v, _tid):
+        if isinstance(obj, _tid):
             return
-        self._add_tuple(tid, self._free, safely=False)
+        self._add_tuple(tid, self._free, check=False)
         self._free = tid
         self._count -= 1
+        self._update_index(tid, obj, remove=True)
+
+    def all_tuples(self):
+        for i, v in izip(count(), chain(*self._chunks)):
+            if not isinstance(v, _tid):
+                yield self._make_tid(i), v
 
     def find(self, query):
         pass
@@ -103,6 +119,7 @@ class TSpace(object):
 
 import random
 import unittest
+
 
 class TSpaceTests(unittest.TestCase):
     def setUp(self):
@@ -199,14 +216,14 @@ class TSpaceTests(unittest.TestCase):
 
     def test_stress_random(self):
         r0 = random.Random(1277)
-        for x in xrange(100):
+        for x in xrange(10):
             seed = r0.getrandbits(32)
             self.rand_test(seed)
 
     def rand_test(self, seed):
         r = random.Random(seed)
         tuples = []
-        for y in xrange(5000):
+        for y in xrange(1000):
             a = r.choice(['get', 'put', 'remove'])
             if a == 'put':
                 v = {'a': r.random()}
@@ -222,6 +239,60 @@ class TSpaceTests(unittest.TestCase):
                 self.tspace.remove(tid)
 
 
+import mock
+
+from mock import call
+
+class TSpaceIndexTests(unittest.TestCase):
+    def setUp(self):
+        self.tspace = TSpace()
+        self.index  = mock.Mock()
+
+    def test_add_index_empty(self):
+        self.tspace.add_index(self.index)
+        self.assertEqual(self.index.mock_calls, [])
+        self.assertEqual(self.tspace._indexes[0], self.index)
+
+    def test_add_index_contents(self):
+        v = {'a': 42}
+        tid1 = self.tspace.put(v)
+        tid2 = self.tspace.put(v)
+        tid3 = self.tspace.put(v)
+        self.tspace.add_index(self.index)
+        calls = [ call.add_tuple(t, v) for t in [tid1, tid2, tid3]]
+        self.index.assert_has_calls(calls)
+
+    def test_update_index_add(self):
+        v = {'a': 42}
+        self.tspace.add_index(self.index)
+        tid = self.tspace.put(v)
+        self.index.assert_has_calls([call.add_tuple(tid, v)])
+
+    def test_update_index2_add(self):
+        v = {'a': 42}
+        index2 = mock.Mock()
+        self.tspace.add_index(self.index)
+        self.tspace.add_index(index2)
+        tid = self.tspace.put(v)
+        self.index.assert_has_calls([call.add_tuple(tid, v)])
+        index2.assert_has_calls([call.add_tuple(tid, v)])
+
+    def test_update_index_remove(self):
+        v = {'a': 42}
+        self.tspace.add_index(self.index)
+        tid = self.tspace.put(v)
+        self.tspace.remove(tid)
+        self.index.assert_has_calls([call.add_tuple(tid, v), call.remove_tuple(tid, v)])
+
+    def test_update_index2_remove(self):
+        v = {'a': 42}
+        index2 = mock.Mock()
+        self.tspace.add_index(self.index)
+        self.tspace.add_index(index2)
+        tid = self.tspace.put(v)
+        self.tspace.remove(tid)
+        self.index.assert_has_calls([call.add_tuple(tid, v), call.remove_tuple(tid, v)])
+        index2.assert_has_calls([call.add_tuple(tid, v), call.remove_tuple(tid, v)])
 
 if __name__ == '__main__':
     unittest.main()
