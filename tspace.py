@@ -1,6 +1,6 @@
 
 from collections import namedtuple
-from itertools import chain, count, izip
+from itertools import chain, count, ifilter, imap, izip
 from operator import methodcaller
 
 
@@ -103,10 +103,22 @@ class TSpace(object):
         self._count -= 1
         self._update_index(tid, obj, remove=True)
 
+    def free_list(self):
+        free = set()
+        curr = self._free
+        while curr is not None:
+            free.add(curr)
+            curr = self._get(curr)
+        return free
+
+    def all_tids(self):
+        free = self.free_list()
+        n = len(self._chunks) * DEFAULT_CHUNK_SIZE
+        return ifilter(lambda x: x not in free, imap(self._make_tid, xrange(n)))
+
     def all_tuples(self):
-        for i, v in izip(count(), chain(*self._chunks)):
-            if not isinstance(v, _tid):
-                yield self._make_tid(i), v
+        for tid in self.all_tids():
+            yield tid, self.get(tid)
 
     def find(self, query):
         pass
